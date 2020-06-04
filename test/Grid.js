@@ -189,6 +189,20 @@ tap.test(p.name, (suite) => {
       sg.end();
     });
 
+    g.test('near', (n) => {
+      const grid = new Grid({ name: 'x', radius: 4 },
+        { name: 'y', radius: 4 });
+
+      const neighbors = grid.near({ x: 2, y: 3 });
+      n.same(neighbors,
+        [{ x: 1, y: 2 }, { x: 1, y: 3 }, { x: 1, y: 4 }, { x: 2, y: 2 },
+          { x: 2, y: 3 }, { x: 2, y: 4 }, { x: 3, y: 2 }, { x: 3, y: 3 }, { x: 3, y: 4 }]);
+
+      const ordNeighbors = grid.near({ x: 2, y: 3 }, true);
+      n.same(ordNeighbors, [{ x: 3, y: 3 }, { x: 1, y: 3 }, { x: 2, y: 4 }, { x: 2, y: 2 }]);
+      n.end();
+    });
+
     g.end();
   });
 

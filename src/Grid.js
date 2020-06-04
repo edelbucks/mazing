@@ -1,6 +1,10 @@
 import lGet from 'lodash/get';
 import inRange from 'lodash/inRange';
+import isEqual from 'lodash/isEqual';
 import reverse from 'lodash/reverse';
+import { Subject, BehaviorSubject } from 'rxjs';
+import permuter from 'js-permuter';
+import flatten from 'lodash/flatten';
 import Dimension from './Dimension';
 
 /**
@@ -24,6 +28,54 @@ export default class Grid {
       dimensions.forEach((d, i) => this.addDim(d, i));
     }
     this.storage = 'sparse';
+  }
+
+  /**
+   * determines the validity of a point;
+   * that is, the point has all proper coordinate keys
+   * AND is inside the grid space.
+   *
+   * note only tests for existence and validity
+   * of known dimensions; extra data is ignored.
+   *
+   * @param point {Object}
+   */
+  validPoint(point) {
+    if (!this.validCoordinate(point)) return false;
+    for (let i = 0; i < this.dims.length; ++i) {
+      const dim = this.dims[i];
+      if (!this.dims[i].inRange(point[dim.name])) {
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+  /**
+   * tests to see if a point has all the proper keys.
+   * @param point
+   * @returns {boolean}
+   */
+  validCoordinate(point) {
+    if (typeof point !== 'object') return false;
+
+    return this.dimNames.reduce((valid, name) => valid && name in point, true);
+  }
+
+  get dims() {
+    if (!this._dims) {
+      this._dims = [];
+    }
+    return this._dims;
+  }
+
+  get dimNames() {
+    return this.dims.map(({ name }) => name);
+  }
+
+  set dims(data) {
+    this._dims = [];
   }
 
   get seedFunction() {
@@ -85,22 +137,66 @@ export default class Grid {
   }
 
   set(pointOrFlat, value) {
+    let coord = pointOrFlat;
     let index = pointOrFlat;
     if (typeof index !== 'number') {
       index = this.flatten(pointOrFlat);
+    } else {
+      coord = null;
     }
 
     if (index === null) {
       return;
     }
 
-
     if (this.storage === 'sparse') {
       this._store.set(index, value);
     }
+
     if (this.storage === 'dense') {
       this._store[index] = value;
     }
+
+    const prev = this.get(index);
+    if (!isEqual(prev, coord)) {
+      if (this._changes) {
+        if (!coord) {
+          coord = this.unflatten(index);
+        }
+        this.changes.next({
+          coord,
+          value,
+          prev,
+          grid: this,
+        });
+      }
+      if (this._subject) {
+        this._subject.next(this);
+      }
+    }
+  }
+
+  near(point, ordinal = false) {
+    if (!this.validCoordinate(point)) return [];
+
+    if (typeof point === 'number') {
+      point = this.unflatten(point);
+    }
+
+    if (ordinal) {
+      return flatten(this.dimNames.map((name) => (
+        [
+          { ...point, [name]: (point[name] + 1) },
+          { ...point, [name]: (point[name] - 1) },
+        ]
+      )));
+    }
+
+    const extents = this.dimNames.map((name) => ({
+      [name]: [point[name] - 1, point[name], point[name] + 1],
+    })).reduce((options, option) => Object.assign(options, option), {});
+    const near = permuter.permute(extents);
+    return near;
   }
 
   addDim(props, i = 0) {
@@ -148,5 +244,28 @@ export default class Grid {
       }, [{}, flattened]);
 
     return result[0];
+  }
+
+  /**
+   *
+   * @returns {Subject}
+   */
+  get changes() {
+    if (!this._changes) {
+      this._changes = new Subject();
+    }
+
+    return this._changes;
+  }
+
+  /**
+   *
+   * @returns {BehaviorSubject<Grid>}
+   */
+  subject() {
+    if (!this._subject) {
+      this._subject = new BehaviorSubject(this);
+    }
+    return this._subject;
   }
 }
