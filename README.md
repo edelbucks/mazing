@@ -91,7 +91,15 @@ non-ortho returns 3 ** (number of dimensions) points.
 
 note - the return value is a set of points that is NOT filtered by 
 containment in the grid. 
-k
+
+## Branches
+
+Branches is a fun utility class that uses a 2d grid to draw a maze.
+useful for fucking over your D & D group:
+
+https://codesandbox.io/s/mazing-qsqf8
+
+![maze](maze.png)
 
 ## Trust Jebus
 

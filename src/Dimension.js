@@ -18,6 +18,14 @@ export default class Dimension {
     }
   }
 
+  get mid() {
+    return Math.round((this.max + this.min)/2);
+  }
+
+  get center() {
+    return { [this.name]: this.mid };
+  }
+
   inRange(value) {
     return value <= this.max && value >= this.min;
   }

@@ -109,6 +109,10 @@ export default class Grid {
     return this._store;
   }
 
+  get center() {
+    return this.dims.reduce((point, dim) => ({ ...point, ...dim.center }), {});
+  }
+
   get(pointOrFlat) {
     let index = pointOrFlat;
     if (typeof index !== 'number') {
